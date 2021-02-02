@@ -1,0 +1,79 @@
+---
+title: "Untitled"
+author: "Viktória Mészáros"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(caret)
+library(skimr)
+library(grid)
+library(glmnet)
+library(stargazer)
+library(xtable)
+library(directlabels)
+library(knitr)
+library(cowplot)
+library(rattle)
+library(ranger)
+library(Hmisc)
+library(kableExtra)
+library(ggcorrplot)
+
+source(paste0(path, "da_helper_functions.R"))
+source(paste0(path, "theme_bg.R"))
+
+data <-
+  read_csv(paste0(data_in, "airbnb_paris_workfile_adj.csv")) %>%
+  mutate_if(is.character, factor)
+```
+
+
+## Executive summary
+The aim of this project was to help a company who is operating small and mid-size apartments hosting 2-6 guests to set the rental price for their apartments in the city of **Paris**. To achive this I will build a price prediction model based on data provided by [Inside Airbnb](http://insideairbnb.com/get-the-data.html). The data was scraped between December 15, 2020 and January 1, 2021. The prediction was built on several features such as the number of bedroom or bathrooms of the apartment, the number of guest it accommodates as well as some information about the host itself, and the number and scores of ratings a given apartment got, more over several variables aimed at describing if the apartment has different kinds of amenities. I looked at 5 different kinds of models, to find the best prediction, namely OLS, Lasso, Cart, Random forest and GBM. Out of these the best model I chose for final prediction was....
+
+
+ We evaluated the models with 5-fold cross validation both on a work and holdout set with RMSE being our loss function where the random forest was superior. We believe that our model is robust and can be of great help for our client both in case they want to advertise their accommodations with separate rooms or whole apartments as well. 
+
+
+## The data 
+Before I could haave started building models, I had to do quite a lot of data cleaning. After some basic data time cleaning the first bigger part of the process was to deal with amenities. The data I downloaded from Inside Airbnb contained a list of amenities a given apartment had. I wanted to create dummy variables out of these, but I had 696 distinct categories. To deal with this I decided to create meaningful categories (for example: I had a couple of observations for TV - HDTV, HDTV with Cable, HDTV with Premium Cable, etc. - which were really similar to each other). After this I managed to decrease the number of these variables to 165. Out of these I only kept the ones where there were at least 1% of zeros or ones, otherwise it would not distinguish a lot between the observations. I converted local price to USD to make the model more comparable. If you are interested in the details please see [1_data_cleaning.R](https://github.com/Viki-Meszaros/CEU-Data-Analysis-3/blob/main/Assignment_1/Codes/1_data_cleaning.R) on my Github page.
+After the basic cleaning I also did some preparation for my specific case. I filtered my data set to only those accommodations which are apartments as our company is interested in the price within this category. Beside this I also decreased my sample to the places which accommodates 2 to 6 people. As an addition to these I got rid of observations where the price was above 500 USD (representing 1% of the data) as I considered those as extreme values.  
+
+
+We aimed to keep as many variables as possible and dropped missing values only in rare cases, so we used imputation when that was necessary. The cleaning steps are documented in our [github repo](https://github.com/zsomborh/airbnb_lisbon/blob/main/code/clean_airbnb.R).
+
+Overall we included variables that could be grouped into the following categories: 
+
+- **Base Variables**: Such were the number of bedrooms, bathrooms, accommodates, the type of property which was either apartmant or room and the minimum nights one has to stay in the accommodation.
+- **Host Information**: These variables were of the host of the apartmant such as the number of years they were hosts on Airbnb, how many listed apartmants they have, whether their identity is verified or if they are superhosts.
+- **Reviews**: This category aims to capture the kind of feedback the accommodation received from the guests so far - these are the number of reviews, the average rating it received from clients from 1-10 and the amount of rating they receive in a month on average. 
+- **Amenities**: These capture the extras that an accomodation can offer e.g.: whether it has a kitchen, coffee machine, or has locks on the door - from modeling perspective all such tags that were used more than 100 times were converted to dummies (e.g if accommodation has shampoo tag, it will receive a 1, and 0 otherwise). We decided not to keep them all as some tags appeared very infrequently and such low variation in a predictor would just throw off the model as opposed to improving it. 
+
+## EDA
+
+Our target variable is price, a right skewed variable with a long right tail. On average in our sample apartmant costed almost twice as much as rooms, which is perfectly understandable given that the freedom of a whole apartment is something that people are willing to pay more. In total we have a bit more than 11k observations in which the number of apartments is almost four times more than the number of rooms. 
+
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

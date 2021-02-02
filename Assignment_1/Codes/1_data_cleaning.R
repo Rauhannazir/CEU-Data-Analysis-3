@@ -18,14 +18,14 @@ rm(list=ls())
 library(tidyverse)
 
 ## GETTING THE DATA   
-path <- "C://Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignments/Assignment_1" 
+path <- "C://Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignments/CEU-Data-Analysis-3/Assignment_1/" 
 
 #location folders
 data_in  <- paste0(path,"/Data/Raw/")
 data_out <- paste0(path,"/Data/Clean/")
 
 # load the data
-df <- read.csv(paste0(data_in,"airbnb_paris_total.csv"))
+df <- read_rds(paste0(data_in,"airbnb_paris_total.rds"))
 
 
 # INITIAL STEPS -----------------------------------------------------------
@@ -78,12 +78,12 @@ sapply(df, typeof)
 
 #remove percentage signs
 for (perc in c("host_response_rate","host_acceptance_rate")){
-  df[[perc]]<-gsub("%","",as.character(df[[perc]]))
+  df[[perc]]<-as.numeric(gsub("%","",as.character(df[[perc]])))
 }
 
 #remove dollar signs from price variables
 for (i in 1:nrow(df)){
-  df$price[i] <-gsub("\\$","",as.character(df$price[i]))
+  df$price[i] <- as.numeric(gsub("\\$","",as.character(df$price[i])))
 }
 
 #format binary variables
