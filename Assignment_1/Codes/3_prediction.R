@@ -32,7 +32,7 @@ library(ggcorrplot)
 
 
 # set data dir, load theme and functions
-path <- "C://Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignments/Assignment_1/"
+path <- "C://Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignments/CEU-Data-Analysis-3/Assignment_1/"
 
 source(paste0(path, "da_helper_functions.R"))
 source(paste0(path, "theme_bg.R"))
@@ -56,7 +56,7 @@ options(digits = 3)
 #############
 
 data <-
-  read_csv(paste0(data_in, "airbnb_paris_workfile_adj.csv")) %>%
+  read_rds(paste0(data_in, "airbnb_paris_workfile_adj.rds")) %>%
   mutate_if(is.character, factor)
 
 # our sample
