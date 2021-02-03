@@ -32,7 +32,7 @@ library(ggcorrplot)
 
 
 # set data dir, load theme and functions
-path <- "C://Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignments/CEU-Data-Analysis-3/Assignment_1/"
+path <- "C://Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignment_1/"
 
 source(paste0(path, "da_helper_functions.R"))
 source(paste0(path, "theme_bg.R"))
@@ -56,7 +56,7 @@ options(digits = 3)
 #############
 
 data <-
-  read_rds(paste0(data_in, "airbnb_paris_workfile_adj.rds")) %>%
+  read_csv(paste0(data_in, "airbnb_paris_workfile_adj.csv")) %>%
   mutate_if(is.character, factor)
 
 # our sample
@@ -294,7 +294,7 @@ X3  <- c("f_room_type*f_neighbourhood_cleansed", "n_accommodates*f_neighbourhood
 
 # OLS models --------------------------------------------------------------
 
-# Create models in levels models: 1-8
+# Create models in levels models: 1-0
 modellev1 <- " ~ n_accommodates"
 modellev2 <- paste0(" ~ ",paste(basic_lev,collapse = " + "))
 modellev3 <- paste0(" ~ ",paste(c(basic_lev,basic_add),collapse = " + "))
@@ -654,7 +654,7 @@ rf_model_var_imp_df <-
 
 
 ##############################
-# 2) full varimp plot, top 10 only
+# full varimp plot, top 10 only
 ##############################
 
 rf_model_var_imp_plot_b <- ggplot(rf_model_var_imp_df[1:10,], aes(x=reorder(varname, imp), y=imp_percentage)) +
@@ -713,7 +713,7 @@ save_fig("Fig10-rf-varimp-group",output, "small")
 # Partial Dependence Plots -------------------------------------------------------
 #########################################################################################
 
-pdp_n_acc <- pdp::partial(gbm_model, pred.var = "n_accommodates", pred.grid = distinct_(data_holdout, "n_accommodates"), train = data_train)
+pdp_n_acc <- pdp::partial(rf_model, pred.var = "n_accommodates", pred.grid = distinct_(data_holdout, "n_accommodates"), train = data_train)
 pdp_n_acc_plot <- pdp_n_acc %>%
   autoplot( ) +
   geom_point(color="cyan4", size=3) +
@@ -728,7 +728,7 @@ save_fig("Fig11-gbm-pdp-n-accom", output, "small")
 
 
 
-pdp_n_roomtype <- pdp::partial(gbm_model, pred.var = "f_room_type", pred.grid = distinct_(data_holdout, "f_room_type"), train = data_train)
+pdp_n_roomtype <- pdp::partial(rf_model, pred.var = "f_room_type", pred.grid = distinct_(data_holdout, "f_room_type"), train = data_train)
 pdp_n_roomtype_plot <- pdp_n_roomtype %>%
   autoplot( ) +
   geom_point(color="cyan4", size=3) +
@@ -747,7 +747,7 @@ save_fig("Fig12-gbm-pdp-roomtype", output, "small")
 
 # ---- cheaper or more expensive flats - not used in book
 data_holdout_w_prediction <- data_holdout %>%
-  mutate(predicted_price = predict(gbm_model, newdata = data_holdout))
+  mutate(predicted_price = predict(rf_model, newdata = data_holdout))
 
 
 
@@ -809,17 +809,6 @@ kable(x = result_3, format = "latex", booktabs=TRUE, linesep = "",digits = c(0,2
   cat(.,file= paste0(output, "performance_across_subsamples.tex"))
 options(knitr.kable.NA = NULL)
 
-##########################################
-
-model3_level <- model_results_cv[["modellev3"]][["model_work_data"]]
-model7_level <- model_results_cv[["modellev7"]][["model_work_data"]]
-
-
-# look at holdout RMSE
-model7_level_work_rmse <- mse_lev(predict(model7_level, newdata = data_work), data_work[,"price"] %>% pull)**(1/2)
-model7_level_holdout_rmse <- mse_lev(predict(model7_level, newdata = data_holdout), data_holdout[,"price"] %>% pull)**(1/2)
-model7_level_holdout_rmse
-
 
 
 
@@ -827,30 +816,18 @@ model7_level_holdout_rmse
 # FIGURES FOR FITTED VS ACTUAL OUTCOME VARIABLES #
 ###################################################
 
-# Target variable
 Ylev <- data_holdout[["price"]]
 
-meanY <-mean(Ylev)
-sdY <- sd(Ylev)
-meanY_m2SE <- meanY -1.96 * sdY
-meanY_p2SE <- meanY + 1.96 * sdY
-Y5p <- quantile(Ylev, 0.05, na.rm=TRUE)
-Y95p <- quantile(Ylev, 0.95, na.rm=TRUE)
-
-
-
 # Predicted values
-prediction_holdout_pred <- as.data.frame(predict(gbm_model, newdata = data_holdout, interval="predict")) #%>%
-  #rename(pred_lwr = lwr, pred_upr = upr)
-predictionlev_holdout_conf <- as.data.frame(predict(gbm_model, newdata = data_holdout, interval="confidence")) #%>%
-  #rename(conf_lwr = lwr, conf_upr = upr)
+prediction_holdout_pred <- as.data.frame(predict(gbm_model, newdata = data_holdout, interval="predict")) 
 
 predictionlev_holdout <- cbind(data_holdout[,c("price","n_accommodates")],
-                               predictionlev_holdout_pred)
+                               prediction_holdout_pred)
+
 
 
 # Create data frame with the real and predicted values
-d <- data.frame(ylev=Ylev, predlev=predictionlev_holdout[,"fit"] )
+d <- data.frame(ylev=Ylev, predlev=predictionlev_holdout[,3] )
 # Check the differences
 d$elev <- d$ylev - d$predlev
 

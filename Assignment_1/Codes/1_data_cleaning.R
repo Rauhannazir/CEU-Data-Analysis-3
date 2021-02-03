@@ -17,7 +17,10 @@ rm(list=ls())
 
 library(tidyverse)
 
-## GETTING THE DATA   
+## GETTING THE DATA 
+# download the data from https://github.com/Viki-Meszaros/CEU-Data-Analysis-3/blob/main/Assignment_1/Data/Raw/airbnb_paris_total.rds
+# then set your path to be able to run the code (I can't link it directly as it is too big, so you have to download)
+
 path <- "C://Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignments/CEU-Data-Analysis-3/Assignment_1/" 
 
 #location folders
@@ -85,6 +88,8 @@ for (perc in c("host_response_rate","host_acceptance_rate")){
 for (i in 1:nrow(df)){
   df$price[i] <- as.numeric(gsub("\\$","",as.character(df$price[i])))
 }
+
+df$price <- as.numeric(df$price)
 
 #format binary variables
 for (binary in c("host_is_superhost","host_has_profile_pic","host_identity_verified", "has_availability", "instant_bookable")){

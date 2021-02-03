@@ -17,6 +17,10 @@ library(stargazer)
 library(Hmisc)
 
 # data used
+# download the data from https://github.com/Viki-Meszaros/CEU-Data-Analysis-3/blob/main/Assignment_1/Data/Clean/airbnb_paris_cleaned.rds
+# then set your path to be able to run the code (I can't link it directly as it is too big, so you have to download)
+
+
 path <- "C://Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignments/CEU-Data-Analysis-3/Assignment_1/"
 
 # set data dir, load theme and functions
@@ -33,6 +37,7 @@ options(digits = 3)
 #-------------------------------------------------------
 # Import data
 df <- read_rds(paste(data_in,"airbnb_paris_cleaned.rds", sep = ""))
+
 
 # FILTER DATA TO ACTUAL CASE ----------------------------------------------
 
@@ -508,7 +513,7 @@ for (i in 1:length(categoricals)) {
 # SAVE ADJUSTED WORKFILE --------------------------------------------------
 
 write_csv(df, paste0(data_out, "airbnb_paris_workfile_adj.csv"))
-saveRDS(df, paste0(data_out, "airbnb_paris_workfile_adj.csv"))
+saveRDS(df, paste0(data_out, "airbnb_paris_workfile_adj.rds"))
 
 
 
