@@ -60,7 +60,7 @@ sort(to_filter[to_filter > 0])
 # with full year balance sheet indicating they are not new firms
 data <- data %>%
   select(-c(COGS, finished_prod, net_dom_sales, net_exp_sales, wages, D)) %>%
-  filter(year >= 2012,
+  filter(year >= 2011,
          year <= 2014,
          balsheet_length >= 360)
 
@@ -84,6 +84,22 @@ data <- data %>%
 
 data$sales_mil_log_sq <- (data$sales_mil_log)^2 
 
+
+# Filter out non-alive firms
+data <- data %>%
+  filter(status_alive == 1) %>%
+  # look at firms below 10m euro revenues and above 1000 euros
+  filter(!(sales_mil > 10)) %>%
+  filter(!(sales_mil < 0.001))
+
+# save backup
+df <- data
+data <- df
+
+# Keep only firms with data for the 3 years
+data <- data %>% group_by(comp_id) %>% filter(n() == 4)
+
+# Change in sales
 data <- data %>%
   group_by(comp_id) %>%
   mutate(d1_sales_mil_log = sales_mil_log - Lag(sales_mil_log, 1) ) %>%
@@ -109,20 +125,6 @@ data <- data %>%
   )
 
 
-# Filter out non-alive firms
-data <- data %>%
-  filter(status_alive == 1) %>%
-  # look at firms below 10m euro revenues and above 1000 euros
-  filter(!(sales_mil > 10)) %>%
-  filter(!(sales_mil < 0.001))
-
-# save backup
-df <- data
-data <- df
-
-# Keep only firms with data for the 3 years
-data <- data %>% group_by(comp_id) %>% filter(n() == 3)
-
 
 # CAGR sales change in the last 2 years
 data <- data %>%
@@ -145,7 +147,14 @@ ggplot(data=data, aes(x=cagr_sales)) +
   #scale_x_continuous(expand = c(0.00,0.00),limits=c(0,500), breaks = seq(0,500, 50)) +
   theme_bw() 
 
+# Create fast growth dummy
+data <- data %>%
+  group_by(comp_id) %>%
+  mutate(fast_growth = (cagr_sales > 30) %>%
+           as.numeric(.)) %>%
+  ungroup()
 
+describe(data$fast_growth)
 
 data <- data %>%
   mutate(age = (year - founded_year))
@@ -308,15 +317,6 @@ ggplot(data = data, aes(x=inc_bef_tax_pl, y=as.numeric(fast_growth))) +
   theme_bw() +
   scale_x_continuous(limits = c(-1.5,1.5), breaks = seq(-1.5,1.5, 0.5))
 
-
-# Create fast growth dummy
-data <- data %>%
-  group_by(comp_id) %>%
-  mutate(fast_growth = (cagr_sales > 30) %>%
-           as.numeric(.)) %>%
-  ungroup()
-
-describe(data$fast_growth)
 
 
 

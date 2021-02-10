@@ -195,7 +195,7 @@ CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 ##############################################################
 #                                                            #
 #                           PART IIÍ                         #
-# ----- Probability prediction without loss function ------  #
+# ----- Probability prediction with NO loss function ------  #
 #                                                            #
 ##############################################################
 
@@ -256,7 +256,7 @@ create_calibration_plot(data_holdout,
                         file_name = "ch17-figure-1-logit-m4-calibration", 
                         prob_var = "best_logit_no_loss_pred", 
                         actual_var = "fast_growth",
-                        n_bins = 20)
+                        n_bins = 10)
 
 
 
@@ -340,10 +340,12 @@ cm2
 
 
 
-#############################################x
-# PART II.
-# We have a loss function
-########################################
+##############################################################
+#                                                            #
+#                           PART IIÍ                         #
+# ----- Probability prediction without loss function ------  #
+#                                                            #
+##############################################################
 
 # Introduce loss function
 # relative cost of of a false negative classification (as compared with a false positive classification)
