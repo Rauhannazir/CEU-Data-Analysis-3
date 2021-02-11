@@ -133,7 +133,8 @@ data <- data %>%
 
 data <- data %>%
   filter(year == 2012,
-         cagr_sales != is.na(cagr_sales))
+         cagr_sales != is.na(cagr_sales),
+         cagr_sales <= 3000)
 
 describe(data$cagr_sales)
 describe(data$comp_id)

@@ -112,6 +112,30 @@ sort(to_filter[to_filter > 0])
 #### we only have missing values in birth_year, exit_year and exit_date which we won't use in the prediction
 
 
+
+# CHECK DISTRIBUTION FOR SOME VARIABLE ------------------------------------------------------------------ 
+ggplot(data=data, aes(x=cagr_sales)) +
+  geom_histogram(aes(y = (..count..)/sum(..count..)), binwidth = 10, boundary=0,
+                 color = "black", fill = "deepskyblue4") +
+  coord_cartesian(xlim = c(-100, 200)) +
+  labs(x = "CAGR growth",y = "Percent")+
+  theme_bw() 
+
+ggplot(data=data, aes(x=sales_mil)) +
+  geom_histogram(aes(y = (..count..)/sum(..count..)), binwidth = 0.1,
+                 color = "black", fill = "deepskyblue4") +
+  coord_cartesian(xlim = c(0, 5)) +
+  labs(x = "sales in million",y = "Percent")+
+  theme_bw() 
+
+ggplot(data=data, aes(x=sales_mil_log)) +
+  geom_histogram(aes(y = (..count..)/sum(..count..)), binwidth = 0.25,
+                 color = "black", fill = "deepskyblue4") +
+  labs(x = "log sales in million",y = "Percent")+
+  theme_bw()
+
+
+
 ########################################################
 #                                                      #
 #                       PART II                        #
@@ -147,8 +171,11 @@ train_control <- trainControl(
   savePredictions = TRUE
 )
 
+# MODELS ------------------------------------------------------------------------------------
 
-# Train Logit Models ----------------------------------------------
+#################################
+#      Prob. LOGIT models       #
+#################################
 
 logit_model_vars <- list("X1" = X1, "X2" = X2, "X3" = X3, "X4" = X4, "X5" = X5)
 
@@ -174,8 +201,9 @@ for (model_name in names(logit_model_vars)) {
 
 }
 
-
-# Logit lasso -----------------------------------------------------------
+#################################
+#        LASSO  models          #
+#################################
 
 lambda <- 10^seq(-1, -4, length = 10)
 grid <- expand.grid("alpha" = 1, lambda = lambda)
@@ -203,6 +231,49 @@ write.csv(lasso_coeffs, paste0(output, "lasso_logit_coeffs.csv"))
 CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 
 
+
+#################################
+#         Random forest         #
+#################################
+
+# 5 fold cross-validation
+
+train_control <- trainControl(
+  method = "cv",
+  n = 5,
+  classProbs = TRUE, # same as probability = TRUE in ranger
+  summaryFunction = twoClassSummaryExtended,
+  savePredictions = TRUE
+)
+train_control$verboseIter <- TRUE
+
+tune_grid <- expand.grid(
+  .mtry = c(5, 6, 7),
+  .splitrule = "gini",
+  .min.node.size = c(10, 15)
+)
+
+# build rf model
+set.seed(2021)
+rf_model_p <- train(
+  formula(paste0("fast_growth_f ~ ", paste0(rfvars , collapse = " + "))),
+  method = "ranger",
+  data = data_train,
+  tuneGrid = tune_grid,
+  trControl = train_control,
+  importance = "impurity"
+)
+
+rf_model_p$results
+
+saveRDS(rf_model_p, paste0(data_out, "rf_model_p.rds"))
+
+best_mtry <- rf_model_p$bestTune$mtry
+best_min_node_size <- rf_model_p$bestTune$min.node.size
+
+CV_RMSE_folds[["rf_p"]] <- rf_model_p$resample[,c("Resample", "RMSE")]
+
+
 ##############################################################
 #                                                            #
 #                           PART III                         #
@@ -210,7 +281,11 @@ CV_RMSE_folds[["LASSO"]] <- logit_lasso_model$resample[,c("Resample", "RMSE")]
 #                                                            #
 ##############################################################
 
-# Draw ROC Curve and calculate AUC for each folds --------------------------------
+#################################
+#        Logit and LASOO        #
+#################################
+
+# Calculate AUC for each folds --------------------------------
 CV_AUC_folds <- list()
 
 for (model_name in names(logit_models)) {
@@ -231,7 +306,6 @@ for (model_name in names(logit_models)) {
 }
 
 # For each model: average RMSE and average AUC for models ----------------------------------
-
 CV_RMSE <- list()
 CV_AUC <- list()
 
@@ -240,9 +314,7 @@ for (model_name in names(logit_models)) {
   CV_AUC[[model_name]] <- mean(CV_AUC_folds[[model_name]]$AUC)
 }
 
-# We have 6 models, (5 logit and the logit lasso). For each we have a 5-CV RMSE and AUC.
 # We pick our preferred model based on that. -----------------------------------------------
-
 nvars <- lapply(logit_models, FUN = function(x) length(x$coefnames))
 nvars[["LASSO"]] <- sum(lasso_coeffs != 0)
 
@@ -251,25 +323,48 @@ logit_summary1 <- data.frame("Number of predictors" = unlist(nvars),
                              "CV AUC" = unlist(CV_AUC))
 
 
-# Take best model and estimate RMSE on holdout  -------------------------------------------
+#################################
+#         Random forest         #
+#################################
 
-best_logit_no_loss <- logit_models[["X3"]]
+# Get average RMSE and AUC ------------------------------------
+auc <- list()
+for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
+  cv_fold <-
+    rf_model_p$pred %>%
+    filter(Resample == fold)
+  
+  roc_obj <- roc(cv_fold$obs, cv_fold$fast_growth)
+  auc[[fold]] <- as.numeric(roc_obj$auc)
+}
+CV_AUC_folds[["rf_p"]] <- data.frame("Resample" = names(auc),
+                                     "AUC" = unlist(auc))
 
-logit_predicted_probabilities_holdout <- predict(best_logit_no_loss, newdata = data_holdout, type = "prob")
-data_holdout[,"best_logit_no_loss_pred"] <- logit_predicted_probabilities_holdout[,"fast_growth"]
-RMSE(data_holdout[, "best_logit_no_loss_pred", drop=TRUE], data_holdout$fast_growth)
+CV_RMSE[["rf_p"]] <- mean(CV_RMSE_folds[["rf_p"]]$RMSE)
+CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
+
+
+rf_summary <- data.frame("CV RMSE" = unlist(CV_RMSE),
+                         "CV AUC" = unlist(CV_AUC))
 
 
 
+# FOR BEST MODEL -> RANDOM FOREST
+# discrete ROC (with thresholds in steps) on holdout -------------------------------------------------
+
+best_no_loss <- rf_model_p
+
+predicted_probabilities_holdout <- predict(best_no_loss, newdata = data_holdout, type = "prob")
+data_holdout[,"best_no_loss_pred"] <- predicted_probabilities_holdout[,"fast_growth"]
 
 # discrete ROC (with thresholds in steps) on holdout -------------------------------------------------
-thresholds <- seq(0.05, 0.75, by = 0.03)
+thresholds <- seq(0.05, 0.75, by = 0.025)
 
 cm <- list()
 true_positive_rates <- c()
 false_positive_rates <- c()
 for (thr in thresholds) {
-  holdout_prediction <- ifelse(data_holdout[,"best_logit_no_loss_pred"] < thr, "no_fast_growth", "fast_growth") %>%
+  holdout_prediction <- ifelse(data_holdout[,"best_no_loss_pred"] < thr, "no_fast_growth", "fast_growth") %>%
     factor(levels = c("no_fast_growth", "fast_growth"))
   cm_thr <- confusionMatrix(holdout_prediction,data_holdout$fast_growth_f)$table
   cm[[as.character(thr)]] <- cm_thr
@@ -285,7 +380,7 @@ tpr_fpr_for_thresholds <- tibble(
   "false_positive_rate" = false_positive_rates
 )
 
-discrete_roc_plot <- ggplot(
+ggplot(
   data = tpr_fpr_for_thresholds,
   aes(x = false_positive_rate, y = true_positive_rate, color = threshold)) +
   labs(x = "False positive rate (1 - Specificity)", y = "True positive rate (Sensitivity)") +
@@ -293,46 +388,44 @@ discrete_roc_plot <- ggplot(
   scale_color_viridis(option = "D", direction = -1) +
   scale_x_continuous(expand = c(0.01,0.01), limit=c(0,1), breaks = seq(0,1,0.1)) +
   scale_y_continuous(expand = c(0.01,0.01), limit=c(0,1), breaks = seq(0,1,0.1)) +
-  theme_bg() +
+  theme_bw() +
   theme(legend.position ="right") +
   theme(legend.title = element_text(size = 4), 
         legend.text = element_text(size = 4),
         legend.key.size = unit(.4, "cm")) 
-discrete_roc_plot
-save_fig("ch17-figure-2a-roc-discrete", output, "small")
+
 
 
 # continuous ROC on holdout with best model (Logit 4) -------------------------------------------
+roc_obj_holdout <- roc(data_holdout$fast_growth, data_holdout$best_no_loss_pred)
 
-roc_obj_holdout <- roc(data_holdout$fast_growth, data_holdout$best_logit_no_loss_pred)
-
-
-createRocPlot(roc_obj_holdout, "best_logit_no_loss_roc_plot_holdout")
+createRocPlot(roc_obj_holdout, "best_no_loss_roc_plot_holdout")
 
 
 
 # Confusion table with different tresholds ----------------------------------------------------------
 
 # fast_growth: the threshold 0.5 is used to convert probabilities to binary classes
-logit_class_prediction <- predict(best_logit_no_loss, newdata = data_holdout)
-summary(logit_class_prediction)
+class_prediction <- predict(best_no_loss, newdata = data_holdout)
+summary(class_prediction)
 
 # confusion matrix: summarize different type of errors and successfully predicted cases
 # positive = "yes": explicitly specify the positive case
-cm_object1 <- confusionMatrix(logit_class_prediction, data_holdout$fast_growth_f, positive = "fast_growth")
+cm_object1 <- confusionMatrix(class_prediction, data_holdout$fast_growth_f, positive = "fast_growth")
 cm1 <- cm_object1$table
 cm1
 
 
 # a sensible choice: mean of predicted probabilities
-mean_predicted_fast_growth_prob <- mean(data_holdout$best_logit_no_loss_pred)
+mean_predicted_fast_growth_prob <- mean(data_holdout$best_no_loss_pred)
 mean_predicted_fast_growth_prob
 holdout_prediction <-
-  ifelse(data_holdout$best_logit_no_loss_pred < mean_predicted_fast_growth_prob, "no_fast_growth", "fast_growth") %>%
+  ifelse(data_holdout$best_no_loss_pred < mean_predicted_fast_growth_prob, "no_fast_growth", "fast_growth") %>%
   factor(levels = c("no_fast_growth", "fast_growth"))
 cm_object2 <- confusionMatrix(holdout_prediction,data_holdout$fast_growth_f)
 cm2 <- cm_object2$table
 cm2
+
 
 
 ##############################################################
@@ -349,6 +442,11 @@ FN=3
 cost = FN/FP
 # the prevalence, or the proportion of cases in the population (n.cases/(n.controls+n.cases))
 prevelance = sum(data_train$fast_growth)/length(data_train$fast_growth)
+
+
+#################################
+#        Logit and LASOO        #
+#################################
 
 # Draw ROC Curve and find optimal threshold with loss function --------------------------
 
@@ -434,83 +532,9 @@ cm3 <- cm_object3$table
 cm3
 
 
-
-# Calibration curve -----------------------------------------------------------
-# how well do estimated vs actual event probabilities relate to each other?
-
-create_calibration_plot(data_holdout, 
-                        file_name = "ch17-figure-1-logit-m4-calibration", 
-                        prob_var = "best_logit_with_loss_pred", 
-                        actual_var = "fast_growth",
-                        n_bins = 20)
-
-##############################################################
-#                                                            #
-#                            PART V                          #
-#   ----- Probability prediction with random forest ------   #
-#                                                            #
-##############################################################
-
-
-
-#################################################
-# Probability forest
-#################################################
-
-# 5 fold cross-validation
-
-train_control <- trainControl(
-  method = "cv",
-  n = 5,
-  classProbs = TRUE, # same as probability = TRUE in ranger
-  summaryFunction = twoClassSummaryExtended,
-  savePredictions = TRUE
-)
-train_control$verboseIter <- TRUE
-
-tune_grid <- expand.grid(
-  .mtry = c(5, 6, 7),
-  .splitrule = "gini",
-  .min.node.size = c(10, 15)
-)
-
-# build rf model
-set.seed(2021)
-rf_model_p <- train(
-  formula(paste0("fast_growth_f ~ ", paste0(rfvars , collapse = " + "))),
-  method = "ranger",
-  data = data_train,
-  tuneGrid = tune_grid,
-  trControl = train_control
-)
-
-rf_model_p$results
-
-saveRDS(rf_model_p, paste0(data_out, "rf_model_p.rds"))
-
-best_mtry <- rf_model_p$bestTune$mtry
-best_min_node_size <- rf_model_p$bestTune$min.node.size
-
-
-# Get average (ie over the folds) RMSE and AUC ------------------------------------
-CV_RMSE_folds[["rf_p"]] <- rf_model_p$resample[,c("Resample", "RMSE")]
-
-auc <- list()
-for (fold in c("Fold1", "Fold2", "Fold3", "Fold4", "Fold5")) {
-  cv_fold <-
-    rf_model_p$pred %>%
-    filter(Resample == fold)
-  
-  roc_obj <- roc(cv_fold$obs, cv_fold$fast_growth)
-  auc[[fold]] <- as.numeric(roc_obj$auc)
-}
-CV_AUC_folds[["rf_p"]] <- data.frame("Resample" = names(auc),
-                                     "AUC" = unlist(auc))
-
-CV_RMSE[["rf_p"]] <- mean(CV_RMSE_folds[["rf_p"]]$RMSE)
-CV_AUC[["rf_p"]] <- mean(CV_AUC_folds[["rf_p"]]$AUC)
-
-
+#################################
+#         Random forest         #
+#################################
 # Now use loss function and search for best thresholds and expected loss over folds -----
 best_tresholds_cv <- list()
 expected_loss_cv <- list()
@@ -548,6 +572,7 @@ rf_summary <- data.frame("CV RMSE" = CV_RMSE[["rf_p"]],
 createLossPlot(roc_obj, best_treshold, "rf_p_loss_plot")
 createRocPlotWithOptimal(roc_obj, best_treshold, "rf_p_roc_plot")
 
+
 # Take model to holdout and estimate RMSE, AUC and expected loss ------------------------------------
 
 rf_predicted_probabilities_holdout <- predict(rf_model_p, newdata = data_holdout, type = "prob")
@@ -566,7 +591,7 @@ holdout_treshold <- coords(roc_obj_holdout, x = best_tresholds[["rf_p"]] , input
 expected_loss_holdout <- (holdout_treshold$fp*FP + holdout_treshold$fn*FN)/length(data_holdout$fast_growth)
 expected_loss_holdout
 
-# 
+# Confusion table on holdout set 
 holdout_prediction <-
   ifelse(data_holdout$rf_p_prediction < best_tresholds[["rf_p"]] , "no_fast_growth", "fast_growth") %>%
   factor(levels = c("no_fast_growth", "fast_growth"))
@@ -574,6 +599,45 @@ cm_object_rf<- confusionMatrix(holdout_prediction,data_holdout$fast_growth_f)
 cm_rf <- cm_object_rf$table
 cm_rf
 
+
+
+
+# Save output --------------------------------------------------------
+# Model selection is carried out on this CV RMSE
+
+nvars[["rf_p"]] <- length(rfvars)
+
+summary_results <- data.frame("Number of predictors" = unlist(nvars),
+                              "CV RMSE" = unlist(CV_RMSE),
+                              "CV AUC" = unlist(CV_AUC),
+                              "CV threshold" = unlist(best_tresholds),
+                              "CV expected Loss" = unlist(expected_loss))
+
+model_names <- c("Logit X1", "Logit X3",
+                 "Logit LASSO","RF probability")
+summary_results <- summary_results %>%
+  filter(rownames(.) %in% c("X1", "X3", "LASSO", "rf_p"))
+rownames(summary_results) <- model_names
+
+
+
+
+
+# Calibration curve -----------------------------------------------------------
+# how well do estimated vs actual event probabilities relate to each other?
+
+create_calibration_plot(data_holdout, 
+                        file_name = "logit-X3-calibration", 
+                        prob_var = "best_logit_with_loss_pred", 
+                        actual_var = "fast_growth",
+                        n_bins = 20)
+
+
+
+
+# ----------------------------------------------------------------------------------------------------------------------------------------
+# EXTRA
+# ----------------------------------------------------------------------------------------------------------------------------------------
 
 #################################################
 # Classification forest
@@ -608,28 +672,7 @@ rf_model_f$results
 
 saveRDS(rf_model_f, paste0(data_out,"rf_model_f.rds"))
 
-
-
-# Summary results ---------------------------------------------------
-
-nvars[["rf_p"]] <- length(rfvars)
-
-summary_results <- data.frame("Number of predictors" = unlist(nvars),
-                              "CV RMSE" = unlist(CV_RMSE),
-                              "CV AUC" = unlist(CV_AUC),
-                              "CV threshold" = unlist(best_tresholds),
-                              "CV expected Loss" = unlist(expected_loss))
-
-model_names <- c("Logit X1", "Logit X3",
-                 "Logit LASSO","RF probability")
-summary_results <- summary_results %>%
-  filter(rownames(.) %in% c("X1", "X3", "LASSO", "rf_p"))
-rownames(summary_results) <- model_names
-
-
-
-
-
+#### the classification has much higher expected loss even compared to simple logit models -> won't use it
 
 
 
