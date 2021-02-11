@@ -11,8 +11,9 @@
 
 rm(list=ls())
 
-dir <- "c:/Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignments/CEU-Data-Analysis-3/Assignment_2/"
+# Please change dir to your own and unzip bisnode firm panel data in data/raw folder
 
+dir <- "c:/Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignments/CEU-Data-Analysis-3/Assignment_2/"
 
 # Import libraries
 library(tidyverse)

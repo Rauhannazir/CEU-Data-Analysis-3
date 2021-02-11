@@ -38,6 +38,8 @@ library(rpart.plot)
 library(viridis)
 
 
+# Please change path to yours
+ 
 path <- "c:/Users/MViki/Documents/CEU/Winter_semester/DA_3/Classes/Assignments/CEU-Data-Analysis-3/Assignment_2/"
 
 

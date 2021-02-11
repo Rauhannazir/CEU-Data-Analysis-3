@@ -109,6 +109,7 @@ rfvars  <-  c("sales_mil", "d1_sales_mil_log", rawvars, hr, firm)
 
 In this project our goal is to build a firm success prediction model to help investment decisions. To achieve this we built a fast growth prediction model using probability prediction on detailed company data from a middle-sized country in the European Union. The data includes all registered companies from 2005-2016 in three selected industries (auto manufacturing, equipment manufacturing, hotels and restaurants). The prediction was built on several features such as key properties of companies, balance sheets and profit and loss statements, firm and management information. We looked at 7 different models including OLS, Lasso and Random forest and our final model was the OLS logit model using log sales and sales change variables with firm and financial statements variables. Overall the model predicted firm growth relatively good, its accuracy was 82.6% and it predicted 43.1% of the 2014 fast growth firms positive. The model RMSE was 0.354, the AUC was 0.688 and its average expected loss was 0.409.
 
+Link to project [Github](https://github.com/Viki-Meszaros/CEU-Data-Analysis-3/tree/main/Assignment_2) repo.
 
 ## Introduction
 
@@ -461,7 +462,7 @@ createRocPlot(roc_obj_holdout, "best_no_loss_roc_plot_holdout")
 ### Finding optimal threshold
 To be able to find the optimal threshold we had to come up with a loss function for our problem. In this case the aim is to predict fast growth. Why we want to know that? Most probably as we want to invest in quickly growing companies to earn more. In this case when looking at the costs of errors it is worse for us if we make a False negative error, so we don't invest in a company but it will grow significantly as we loose this good opportunity. On the other hand if we make a false positive error and we invest in a company but it is actually not a fast growing one, we don't lose money it only increases with a slower phase. For these reasons we set in our loss function that the cost of a false negative error is **3 times more** than the cost of a false positive. Based on this we will be able to calculate the best threshold that minimizes our expected loss. 
 Based on the formula the optimal classification threshold would be **1/(1+3) = 0.25**. To be more precise we ran the optimal threshold selection algorithm on the train data using the same 5-fold cross-validation as before. This is a more robust way of finding the optimal value. From the table below you can see that the formula and the algorithm gave a pretty similar threshold value, which is what we expected.The expected loss values are also really similar across the different models.
-The best (lowest) RMSE and the lowest expected loss belong to the same model, the random forest. For this the optimal threshold for classification is **0.29.7**. Overall all the best thresholds are close to the formula calculated one (0.24-0.3).
+The best (lowest) RMSE and the lowest expected loss belong to the same model, the random forest. For this the optimal threshold for classification is **0.297**. Overall all the best thresholds are close to the formula calculated one (0.24-0.3).
 
 ```{r, echo=F, message=F, warning=F}
 FP=1
@@ -564,7 +565,7 @@ RMSE shows a different order with random forest at the first place, then LASSO, 
 Even though the random forest was the best for all the comparison measures, we decided to use the simple Logit X3 probability model as our final choice. The numbers are really close to each other, but X3 is a much simpler model, having significantly less variables than the logit LASSO and it is easily interpretable compared to the random forest, which is a black box model.
 
 ### Model evaluation
-Now that we have the optimal threshold vales we can turn to the holdout set and evaluate our chosen best model the logit X3. The expected loss we get when calculating it on the holdout set is **0.404**. This is even smaller than what we got for the train data. We also looked at the confusion table for the model.  From this we can read the true positive, true negative false positive and negative predictions the model made. We can calculate several models to check the performance of our model. 
+Now that we have the optimal threshold vales we can turn to the holdout set and evaluate our chosen best model the logit X3. The expected loss we get when calculating it on the holdout set is **0.39**. This is even smaller than what we got for the train data. We also looked at the confusion table for the model.  From this we can read the true positive, true negative false positive and negative predictions the model made. We can calculate several models to check the performance of our model. 
 
 * Accuracy is **82.6%**
 * Sensitivity is **30.5%**
