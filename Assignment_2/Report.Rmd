@@ -1,5 +1,7 @@
 ---
 title: "Probability prediction of firm fast growth"
+author: "Viktoria Meszaros & Attila Serfozo "
+date: '2021-02-11'
 output: html_document
 ---
 
@@ -48,7 +50,6 @@ data_in <- paste0(path,"data/clean/")
 data_out <- data_in
 output <- paste0(path,"output/")
 create_output_if_doesnt_exist(output)
-
 
 # Load the data
 data <- readRDS(paste0(data_in,"bisnode_firms_clean.rds"))
@@ -103,13 +104,15 @@ logitvars <- c("sales_mil_log", "sales_mil_log_sq", engvar, engvar2, engvar3, d1
 rfvars  <-  c("sales_mil", "d1_sales_mil_log", rawvars, hr, firm)
 ```
 
+
 ## Abstract
 
+In this project our goal is to build a firm success prediction model to help investment decisions. To achieve this we built a fast growth prediction model using probability prediction on detailed company data from a middle-sized country in the European Union. The data includes all registered companies from 2005-2016 in three selected industries (auto manufacturing, equipment manufacturing, hotels and restaurants). The prediction was built on several features such as key properties of companies, balance sheets and profit and loss statements, firm and management information. We looked at 7 different models including OLS, Lasso and Random forest and our final model was the OLS logit model using log sales and sales change variables with firm and financial statements variables. Overall the model predicted firm growth relatively good, its accuracy was 82.6% and it predicted 43.1% of the 2014 fast growth firms positive. The model RMSE was 0.354, the AUC was 0.688 and its average expected loss was 0.409.
 
 
 ## Introduction
 
-The aim of this project was to build a firm success prediction model using probability prediction on detailed company data from a middle-sized country in the European Union. In the exercise we considered a company successful if its sales grew by a compound annual growth rate (CAGR) of more than 30%. We calculated CAGR growth as the annualized average rate of sales growth between two given years, assuming growth takes place at an exponentially compounded rate. The prediction was built on several features including key company properties, balance sheet and profit and loss statement data and management information. During the project we looked at 7 different models includeing 5 OLS, a Lasso and a Random forest and in the end we desired to finish with a final model with relatively good prediction power regarding it's RMSE, AUC and average expected loss.
+The aim of this project was to build a firm success prediction model to help investment decisions using probability prediction on detailed company data from a middle-sized country in the European Union. In the exercise we considered a company successful if its sales grew by a compound annual growth rate (CAGR) of more than 30%. We calculated CAGR growth as the annualized average rate of sales growth between two given years, assuming growth takes place at an exponentially compounded rate. The prediction was built on several features including key company properties, balance sheet and profit and loss statement data and management information. During the project we looked at 7 different models including 5 OLS, a Lasso and a Random forest and in the end we desired to finish with a final model with relatively good prediction power regarding it's RMSE, AUC and average expected loss.
 
 
 ## Data Preparation
@@ -151,7 +154,7 @@ ggplot(data=data, aes(x=cagr_sales)) +
 
 ```
 
-After creating our variable we wanted to predict, the next task was feature engineering. During this task we looked at financial variables and their validity. We flagged variables with mistakes in their balance sheet (e.g. negative values in assets) and created category variables and created factors. In the end we dropped observations with too many missing values in key variables and we finished with 116 variables and 11 910 observations of which around 16.4% turned into fast growth firms by 2014.
+After creating our variable we wanted to predict, the next task was feature engineering. During this task we looked at financial variables and their validity. We flagged variables with mistakes in their balance sheet (e.g. negative values in assets) and created category variables and created factors. In the end we dropped observations with too many missing values in key variables and we finished with 116 variables and 11 910 observations.
 
 Finally, for modeling purposes we separated the variables to 9 groups:
 
@@ -165,11 +168,10 @@ Finally, for modeling purposes we separated the variables to 9 groups:
 - **Interactions 1 and 2:** interactions of variables.
 
 
-
 # Modelling
 
 ### Set up
-In out analysis our aim was to predict the fast growth of a company For this we calculated the to year CAGR for each company in 2014 from 2012. We set a threshold, namely 30% of increase in CAGR and considered companies achieving this in 2014 as fast growth firms. We payed attention to have a decent amount of our companies categorized as fast growth. From the 11 911 companies we had after all the cleaning and preparation 1 957 were fast growth which is approximately 16% of all of our observations. The reasons why we used two years CAGR as the measurement of fast growth was first of all that if we would only look at one year values it would only consider a really short term period. Sales can change dramatically year over year and we wanted to categorize companies as fast growing as they can maintain the growth at least over a 2 year time period. We considered longer time frames in the beginning as well, but stick with this 2 year spam in the end as our aim is prediction and it gets harder and harder to predict the future as we increase the number of years.   
+So in out analysis our aim was to predict the fast growth of a company. For this we calculated the to year CAGR for each company in 2014 from 2012. We set a threshold, namely 30% of increase in CAGR and considered companies achieving this in 2014 as fast growth firms. We payed attention to have a decent amount of our companies categorized as fast growth. From the 11 910 companies we had after all the cleaning and preparation 1 957 were fast growth which is approximately 16% of all of our observations. The reasons why we used two years CAGR as the measurement of fast growth was first of all that if we would only look at one year values it would only consider a really short term period. Sales can change dramatically year over year and we wanted to categorize companies as fast growing as they can maintain the growth at least over a 2 year time period. We considered longer time frames in the beginning as well, but stick with this 2 year spam in the end as our aim is prediction and it gets harder and harder to predict the future as we increase the number of years.   
 
 ```{r, echo=F, warning=F, message=F}
 
@@ -604,9 +606,4 @@ The final model we choose for predicting if a company is a fast growth one or no
 The accuracy of our model was 83% meaning that is classified 83% of the firms to the good category. From the actual not fast growing firms the model predicted 92% correctly, while from the actual fast growing ones it predicted 30% right. As the number of firms that are actually fast growing is much lower only 16% of our data, so it is more difficult to predict them then to predict non fast growing companies. From the firms the model predicted to be fast growing 43% actually turned out to be fast growing. 
 The aim of this project was to help a company find the fast growth firms which worth investing in. Now based on our final model (in case of high external validity!) we can provide a tool for the company that predicts or suggests a pool of potentially fast growing firsms from which we can expect that 43% will be actually high growth.
 Based on the risk tolerance of the client we can change the loss function. For example if they are more sensitive to false positive errors, so do not want to predict that a company will grow fast when it actually won't  they will get totally different results. The number of falsely categorized firms to fast growth will decrease but in this case the number of companies that will be actually fast growth but categorized as not will increase. This would lead to that the sensitivity of our model will be lower, so it will be able to predict smaller amount of the fast growing firms correctly.  This would be a more risk averse attitude.
-
-
-
-
-
 
