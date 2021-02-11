@@ -53,6 +53,8 @@ create_output_if_doesnt_exist(output)
 # Load the data
 data <- readRDS(paste0(data_in,"bisnode_firms_clean.rds"))
 
+options(digits = 4)
+
 ```
 
 
@@ -112,11 +114,11 @@ The aim of this project was to build a firm success prediction model using proba
 
 ## Data Preparation
 
-The dataset was constructed by  Bisnode, a business data and analytics company (www.bisnode.com) and includes the detailed company data from a middle-sized country in the European Union. All registered companies are from 2005-2016 in three selected industries of auto manufacturing, equipment manufacturing, hotels and restaurants.
+The data set was constructed by  Bisnode, a business data and analytics company (www.bisnode.com) and includes the detailed company data from a middle-sized country in the European Union. All registered companies are from 2005-2016 in three selected industries of auto manufacturing, equipment manufacturing, hotels and restaurants.
 
 In the beginning of the data preparation we started with 287 829 observations (46 412 firms) and 48 variables describing all available information like properties of company, balance sheet, profit and loss elements and management information. The scope of the project was to build a model which can predict whether a company will be a successful firm or not. Thus, we decided to dedicate a company successful if its a fast growing company with 30% (CAGR) year-on-year sales growth. 
 
-We filtered our dataset on the period between 2011 and 2014, we conducted the analysis for this time interval. We calculated CAGR of sales from 2012 to 2014 and created change of sales variable between 2011 to 2012. In addition we applied a logarithmic transformation on sales to achieve a normal distribution. 
+We filtered our data set on the period between 2011 and 2014, we conducted the analysis for this time interval. We calculated CAGR of sales from 2012 to 2014 and created change of sales variable between 2011 to 2012. In addition we applied a logarithmic transformation on sales to achieve a normal distribution. 
 
 ```{r  message=FALSE, warning=FALSE, echo=FALSE, out.width = '50%', fig.height=4}
 
@@ -319,7 +321,7 @@ logit_summary1 %>%
 ```
 
 ### II. LASSO model
-After the basic logit models we also applied LASSO to and built a model that select the most important variables based on calculations and not like us manually deciding on what features to include and what not. In this model we included all the variables that we had in our fifth logit model (X5) - firm specific, all financial with all functional forms, growth related, some connected to HR and the interactions as well. We compared it to our benchmark. We can see that LASSO has shrunk several coefficients to zero ending up with 98 predictors (from 149 in the beginning). Based on both the RMSE and AUC values for the model it is worse compared to our third logit model. 
+After the basic logit models we also applied LASSO to and built a model that select the most important variables based on calculations and not like us manually deciding on what features to include and what not. In this model we included all the variables that we had in our fifth logit model (X5) - firm specific, all financial with all functional forms, growth related, some connected to HR and the interactions as well. We compared it to our benchmark. We can see that LASSO has shrunk some coefficients to zero ending up with 128 predictors (from 149 in the beginning). Based on the RMSE the LASSO model is slightly better but according to AUC values the simple third logit model (X3) is superior.
 
 ```{r, echo=F, message=F, warning=F}
 logit_summary1 %>% 
@@ -329,7 +331,8 @@ logit_summary1 %>%
 ```
 
 ### III. Random forest
-After the logit and logit LASSO models we wanted to find out if we can build a stronger model with better predicting power if we use a random forest. In this model we used the same variables as in the fourth model (X4). 
+After the logit and logit LASSO models we wanted to find out if we can build a stronger model with better predicting power if we use a random forest. It is a reasonable choice as it is good at finding non-linear patterns and interactions. In this model we used the same variables as in the fourth model (X4), but without any feature engineering. Meaning that we did not include polynomials, additional flag variables and winsorize values. In the tuning grid we used the default of growing 500 trees with 10 and 15 as the minimum number of observations at each terminal node and 5, 6 or 7 variables to use for each split.
+The random forest outperformed our best model, the X3 logit model, both in terms of lower RMSE with 0.352 and higher AUC with 0.707 values. 
 
 ```{r, include=F}
 # 5 fold cross-validation
@@ -456,7 +459,7 @@ createRocPlot(roc_obj_holdout, "best_no_loss_roc_plot_holdout")
 ### Finding optimal threshold
 To be able to find the optimal threshold we had to come up with a loss function for our problem. In this case the aim is to predict fast growth. Why we want to know that? Most probably as we want to invest in quickly growing companies to earn more. In this case when looking at the costs of errors it is worse for us if we make a False negative error, so we don't invest in a company but it will grow significantly as we loose this good opportunity. On the other hand if we make a false positive error and we invest in a company but it is actually not a fast growing one, we don't lose money it only increases with a slower phase. For these reasons we set in our loss function that the cost of a false negative error is **3 times more** than the cost of a false positive. Based on this we will be able to calculate the best threshold that minimizes our expected loss. 
 Based on the formula the optimal classification threshold would be **1/(1+3) = 0.25**. To be more precise we ran the optimal threshold selection algorithm on the train data using the same 5-fold cross-validation as before. This is a more robust way of finding the optimal value. From the table below you can see that the formula and the algorithm gave a pretty similar threshold value, which is what we expected.The expected loss values are also really similar across the different models.
-The best (lowest) RMSE and the lowest expected loss belong to the same model, the random forest. For this the optimal threshold for classification is **0.28**. 
+The best (lowest) RMSE and the lowest expected loss belong to the same model, the random forest. For this the optimal threshold for classification is **0.29.7**. Overall all the best thresholds are close to the formula calculated one (0.24-0.3).
 
 ```{r, echo=F, message=F, warning=F}
 FP=1
@@ -552,15 +555,19 @@ summary_results %>%
 ```
 
 ### Model choice
+We decided on what model to use as the final model based on the expected losses. Here the lowest expected loss is for the random forest, then the probability logit model (X3) followed by the logit LASSO model and finally the most simple X1 logit model. 
+Ordering the models based on AUC would yield the same list.
+RMSE shows a different order with random forest at the first place, then LASSO, logit X3, and the final model is again logit X1.
 
+Even though the random forest was the best for all the comparison measures, we decided to use the simple Logit X3 probability model as our final choice. The numbers are really close to each other, but X3 is a much simpler model, having significantly less variables than the logit LASSO and it is easily interpretable compared to the random forest, which is a black box model.
 
 ### Model evaluation
-Now that we have the optimal threshold vales we can turn to the holdout set and evaluate out current best model the X3. The expected loss we get when calculating it on the holdout set is **0.404**. This is even smaller than what we got for the train data. We also looked at the confusion table for the model.  From this we can read the true positive, true negative false positive and negative predictions the model made. We can calculate 
+Now that we have the optimal threshold vales we can turn to the holdout set and evaluate our chosen best model the logit X3. The expected loss we get when calculating it on the holdout set is **0.404**. This is even smaller than what we got for the train data. We also looked at the confusion table for the model.  From this we can read the true positive, true negative false positive and negative predictions the model made. We can calculate several models to check the performance of our model. 
 
-* Accuracy is **81.15%**
-* Sensitivity is **35.59%**
-* Specificity is **90.32%**
-* Correctly predicted positive **42.51%** (142/(142+192))
+* Accuracy is **82.6%**
+* Sensitivity is **30.5%**
+* Specificity is **92.4%**
+* Correctly predicted positive **43.1%** (115/(115+152))
 
 
 ```{r, echo=F, message=F, warning=F}
@@ -592,17 +599,11 @@ cm3 %>%
   kable_classic(full_width = F, html_font = "Cambria")
 ```
 
-The accuracy of our model was 81% meaning that is classified 81% of the firms to the good category. From the actual not fast growing firms the model predicted 90% correctly, while from the actual fast growing ones it predicted 36% right. As the number of firms that are actually fast growing is much lower only 16% of our data, so it is more difficult to predict them then to predict non fast growing companies. From the firms the model predicted to be fast growing 42% actually turned out to be fast growing. This is important as in our hypothetical case the model will suggest our company to invest in 334 firm and from these we can expect about 43% to be actually fast growing.
-
-
-
-
-
-```{r, echo=F, message=F, warning=F}
-
-
-
-```
+## Summary
+The final model we choose for predicting if a company is a fast growth one or not was a probability logit model including features; log sales, firm specific variables, basic financial data and some indicators of growth.
+The accuracy of our model was 83% meaning that is classified 83% of the firms to the good category. From the actual not fast growing firms the model predicted 92% correctly, while from the actual fast growing ones it predicted 30% right. As the number of firms that are actually fast growing is much lower only 16% of our data, so it is more difficult to predict them then to predict non fast growing companies. From the firms the model predicted to be fast growing 43% actually turned out to be fast growing. 
+The aim of this project was to help a company find the fast growth firms which worth investing in. Now based on our final model (in case of high external validity!) we can provide a tool for the company that predicts or suggests a pool of potentially fast growing firsms from which we can expect that 43% will be actually high growth.
+Based on the risk tolerance of the client we can change the loss function. For example if they are more sensitive to false positive errors, so do not want to predict that a company will grow fast when it actually won't  they will get totally different results. The number of falsely categorized firms to fast growth will decrease but in this case the number of companies that will be actually fast growth but categorized as not will increase. This would lead to that the sensitivity of our model will be lower, so it will be able to predict smaller amount of the fast growing firms correctly.  This would be a more risk averse attitude.
 
 
 
