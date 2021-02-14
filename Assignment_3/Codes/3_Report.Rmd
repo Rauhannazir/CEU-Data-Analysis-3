@@ -48,7 +48,7 @@ options(digits = 4)
 The aim of this analysis is to find the best deals for hotels in Vienna. This is built on the "Finding a Good Deal among Hotels with Multiple Regressions" case study in the 10th chapter. For this I will use different machine learning models to predict the price of the hotels based on the different features they have. After this I will search for the places where the actual price is the lowest compare to the predicted (calculating most negative residuals). I will outline the 5 best hotels based on the best models and compare them to the findings of the original case study. 
 
 ## Data preparation
-We start the analysis with the [hotelbookingdata]() which contains data about 23 thousand different hotels in 33 unique countries collected between 2017 November and 2018 June. As we are only interested in the hotels in Vienna we filter down our data set to this city. In Vienna there were 516 observations, but a lot of them were in the table multiple times due to different points in time. I wanted one observation for each hotel, so for this I filter the data set down to only a given year and month to get comparable values. I chose 2017 November weekdays, the same what we used in the case study as I wanted to get an output that is comparable. After dropping duplicated rows my data set decreased to 428 observations.
+We start the analysis with the *hotelbookingdata* which contains data about 23 thousand different hotels in 33 unique countries collected between 2017 November and 2018 June. As we are only interested in the hotels in Vienna we filter down our data set to this city. In Vienna there were 516 observations, but a lot of them were in the table multiple times due to different points in time. I wanted one observation for each hotel, so for this I filter the data set down to only a given year and month to get comparable values. I chose 2017 November weekdays, the same what we used in the case study as I wanted to get an output that is comparable. After dropping duplicated rows my data set decreased to 428 observations.
 
 ## Explanatory data analysis
 ### Filtering
@@ -73,7 +73,7 @@ ggplot(data =  data, aes (x = price)) +
   geom_histogram(color = "gray25", fill = "cyan4",alpha = 0.8)+
   labs(x = "Price (US dollars)", y = "Frequency") +
   geom_segment(aes(x = 600, y = 0, xend = 600, yend = 70), color = "deeppink4", alpha = 0.6, size=1) +
-  annotate("text", x = 450, y = 30, label = "Too expensive", size=2)+
+  annotate("text", x = 800, y = 30, label = "Too expensive", size=2)+
   annotate("rect",xmin=600, xmax=1100, ymin=0, ymax=70, fill="deeppink4", alpha=0.1)+
   theme_bw()
 
