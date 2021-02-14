@@ -37,7 +37,7 @@ data_out <- data_in
 output <- paste0(dir,"Output/")
 
 # load Vienna
-data <- read_csv(paste0(data_in,"hotels-vienna.csv"))
+data <- read_csv("https://raw.githubusercontent.com/Viki-Meszaros/CEU-Data-Analysis-3/main/Assignment_3/Data/Clean/hotels-vienna.csv")
 
 options(digits = 4)
 
